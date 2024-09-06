@@ -1,0 +1,4 @@
+.venv
+.vscode
+video_results/
+yolov8x.pt
