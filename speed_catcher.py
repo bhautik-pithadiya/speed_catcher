@@ -1,3 +1,5 @@
+from collections import defaultdict, deque
+import json
 import cv2
 
 import numpy as np
@@ -6,51 +8,103 @@ import supervision as sv
 from tqdm import tqdm
 from ultralytics import YOLO
 # from supervision.assets import VideoAssets, download_assets
-from collections import defaultdict, deque
 
 
-SOURCE_VIDEO_PATH = "/media/hlink/hd/vehical_test_videos/new_test_video/test_file_1_clipped_30.mp4"
-TARGET_VIDEO_PATH = "vehicles-result.mp4"
+SOURCE_VIDEO_PATH = "/media/hlink/hd/vehical_test_videos/new_test_video/test_file_1_clipped.mp4"
+TARGET_VIDEO_PATH = "video_results/vehicles-result_1.mp4"
 CONFIDENCE_THRESHOLD = 0.3
 IOU_THRESHOLD = 0.5
 MODEL_NAME = "yolov8x.pt"
 MODEL_RESOLUTION = 1280
+SPEED_LIMIT = 40
+
+# collecting coordinates for creating a polygon
 
 
-SOURCE = np.array([
-    [1100,410],
-    [715,410],
-    [200,1010],
-    [1430,1010]
-])
 
-TARGET_WIDTH = 15
-TARGET_HEIGHT = 90
+# SOURCE = np.array([
+#     [1100,410],
+#     [715,410],
+#     [200,1010],
+#     [1430,1010]
+# ])
 
+# TARGET_WIDTH = 15
+# TARGET_HEIGHT = 90
+
+# TARGET = np.array([
+#     [0, 0],
+#     [TARGET_WIDTH - 1, 0],
+#     [TARGET_WIDTH - 1, TARGET_HEIGHT - 1],
+#     [0, TARGET_HEIGHT - 1],
+# ])
+
+# frame_generator = sv.get_video_frames_generator(source_path=SOURCE_VIDEO_PATH)
+# frame_iterator = iter(frame_generator)
+# frame = next(frame_iterator)
+
+
+# annotated_frame = frame.copy()
+# annotated_frame = sv.draw_polygon(scene=annotated_frame, polygon=SOURCE, color=sv.Color(255,0,0), thickness=4)
+# sv.plot_image(annotated_frame
+
+# Initialize variables to store the polygon points
+polygon_points = []
+
+# Define a mouse callback function to capture clicks
+def mouse_callback(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        polygon_points.append((x, y))
+        cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)  # Draw a small circle to mark the point
+        cv2.imshow("Frame", frame)
+
+# Get the first frame from the video
+frame_generator = sv.get_video_frames_generator(source_path=SOURCE_VIDEO_PATH)
+frame_iterator = iter(frame_generator)
+frame = next(frame_iterator).copy()  # Capture a copy of the first frame
+
+# Show the frame and set up mouse click capturing
+cv2.namedWindow("Frame", cv2.WINDOW_NORMAL)
+cv2.imshow("Frame", frame)
+cv2.setMouseCallback("Frame", mouse_callback)
+
+print("Click on four points in the frame to define the polygon. Press 'q' when done.")
+
+# Wait for the user to select 4 points and press 'q'
+while True:
+    cv2.imshow("Frame", frame)
+    key = cv2.waitKey(1)
+    if key == ord('q') and len(polygon_points) == 4:
+        break
+
+cv2.destroyAllWindows()
+
+# Convert collected points to numpy array
+SOURCE = np.array(polygon_points)
+print(SOURCE)
+# Prompt the user for target width and height
+TARGET_WIDTH = int(input("Enter the target width: "))
+TARGET_HEIGHT = int(input("Enter the target height: "))
+
+# Define the target rectangle
 TARGET = np.array([
     [0, 0],
     [TARGET_WIDTH - 1, 0],
     [TARGET_WIDTH - 1, TARGET_HEIGHT - 1],
     [0, TARGET_HEIGHT - 1],
 ])
-
-
-frame_generator = sv.get_video_frames_generator(source_path=SOURCE_VIDEO_PATH)
-frame_iterator = iter(frame_generator)
-frame = next(frame_iterator)
-
-
+print('Displaying the image')
+# Annotate and display the polygon on the first frame
 annotated_frame = frame.copy()
-annotated_frame = sv.draw_polygon(scene=annotated_frame, polygon=SOURCE, color=sv.Color(255,0,0), thickness=4)
-# sv.plot_image(annotated_frame)
-
+annotated_frame = sv.draw_polygon(scene=annotated_frame, polygon=SOURCE, color=sv.Color(255, 0, 0), thickness=4)
+sv.plot_image(annotated_frame)
 
 class ViewTransformer:
 
     def __init__(self, source: np.ndarray, target: np.ndarray) -> None:
         source = source.astype(np.float32)
         target = target.astype(np.float32)
-        self.m = cv2.getPerspectiveTransform(source, target)
+        self.m = cv2.getPerspectiveTransform(source, target) 
 
     def transform_points(self, points: np.ndarray) -> np.ndarray:
         if points.size == 0:
@@ -105,7 +159,8 @@ polygon_zone = sv.PolygonZone(
 )
 
 coordinates = defaultdict(lambda: deque(maxlen=video_info.fps))
-
+speed_records = defaultdict(lambda: deque(maxlen=3))  # 3-frame window
+overspeeding_vehicles = defaultdict(list)  # Store vehicle ID, bounding box, and speed
 frame_counter = 0  # Counter to keep track of frames
 last_speeds = {}   # Dictionary to store the last calculated speed for each tracker ID
 
@@ -145,30 +200,53 @@ with sv.VideoSink(TARGET_VIDEO_PATH, video_info) as sink:
 
         # format labels
         labels = []
-        if frame_counter % 3 == 0:  
-            for tracker_id in detections.tracker_id:
-                if len(coordinates[tracker_id]) < video_info.fps / 2:
-                    labels.append(f"#{tracker_id}")
-                else:
-                    # calculate speed
-                    coordinate_start = coordinates[tracker_id][-1]
-                    coordinate_end = coordinates[tracker_id][0]
-                    distance = abs(coordinate_start - coordinate_end)
-                    time = len(coordinates[tracker_id]) / video_info.fps
-                    speed = distance / time * 3.6
-                    labels.append(f"#{tracker_id} {int(speed)} km/h")
+        # print(poin)
+        # if frame_counter % 3 == 0:  
+        for tracker_id,(x_min, y_min, x_max, y_max)in zip(detections.tracker_id, detections.xyxy):
+            if len(coordinates[tracker_id]) < video_info.fps / 2:
+                labels.append(f"#{tracker_id}")
+            else:
+                # calculate speed                          
+                coordinate_start = coordinates[tracker_id][-1]
+                coordinate_end = coordinates[tracker_id][0]
+                distance = abs(coordinate_start - coordinate_end)
+                time = len(coordinates[tracker_id]) / video_info.fps
+                speed = distance / time * 3.6
+                
+                labels.append(f"#{tracker_id} {int(speed)} km/h") 
+                speed_records[tracker_id].append(speed)
 
-                                        # Store the calculated speed
-                    last_speeds[tracker_id] = speed
-                    labels.append(f"#{tracker_id} {int(speed)} km/h")
-        else:
-            # Show the last calculated speed if available
-            for tracker_id in detections.tracker_id:
-                if tracker_id in last_speeds:
-                    labels.append(f"#{tracker_id} {int(last_speeds[tracker_id])} km/h")
-                else:
-                    labels.append(f"#{tracker_id}")
+                # Check if vehicle is overspeeding over the last 3 speeds
+                if len(speed_records[tracker_id]) == 3:
+                    avg_speed = sum(speed_records[tracker_id]) / 3
+                    if avg_speed > SPEED_LIMIT:
+                        print(f"Vehicle {tracker_id} is overspeeding!")
+                        # x_min, y_min, x_max, y_max = coordinate_end
+                        # Extract the vehicle's region from the current frame
+                        vehicle_image = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
+                        # Save the image for OCR processing
+                        cv2.imwrite(f"overspeeding_vehicles_ss/overspeeding_vehicle_{tracker_id}.png", vehicle_image)
 
+                        # overspeeding_vehicles[tracker_id].append(((x_min, y_min, x_max, y_max), avg_speed))
+
+        # # print(overspeeding_vehicles.items())
+        # for tracker_id, x in overspeeding_vehicles.items():
+        #     # Extract bounding box coordinates
+        #     (bbox, speed) = x[-1]
+        #     x_min, y_min, x_max, y_max = bbox  # Get the latest bounding box
+
+        #     # Extract the vehicle's region from the current frame
+        #     vehicle_image = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
+
+        #     # Save the image for OCR processing
+        #     cv2.imwrite(f"overspeeding_vehicles_ss/overspeeding_vehicle_{tracker_id}.png", vehicle_image)
+
+
+            # Optionally, run your OCR system here on the saved image
+            # ocr_result = run_ocr(f"overspeeding_vehicle_{tracker_id}.png")
+            # print(f"OCR result for vehicle {tracker_id}: {ocr_result}")
+
+                
 
 
         # annotate frame
@@ -186,4 +264,10 @@ with sv.VideoSink(TARGET_VIDEO_PATH, video_info) as sink:
         # add frame to target video
         sink.write_frame(annotated_frame)
 
+    
+        # Optionally, run your OCR system here on the saved image
+        # # ocr_result = run_ocr(f"overspeeding_vehicle_{tracker_id}.png")
+        # print(f"OCR result for vehicle {tracker_id}: {ocr_result}")
 
+# with open("sample.json", "w") as outfile: 
+#     json.dump(speed_ids, outfile)
