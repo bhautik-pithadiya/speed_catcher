@@ -1,0 +1,7 @@
+2024-11-13 18:39:44,799 - root - INFO - Imported config successfully
+2024-11-13 18:39:46,282 - root - INFO - Import from detection.py done successfully
+2024-11-13 18:39:46,282 - root - INFO - Import from database.py done successfully
+2024-11-13 18:39:46,282 - root - INFO - get_polygon_points Importrd from polygon_setup.py 
+2024-11-13 18:39:46,283 - root - INFO - Running the main.py
+2024-11-13 18:39:46,283 - root - INFO - Model Loading Started
+2024-11-13 18:39:46,400 - root - INFO - Yolo model loaded

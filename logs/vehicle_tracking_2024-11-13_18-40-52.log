@@ -1,0 +1,1 @@
+2024-11-13 18:42:19,090 - root - ERROR - Error in main: detecting_number_plate_ocr() missing 2 required positional arguments: 'model' and 'tokenizer'

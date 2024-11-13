@@ -18,19 +18,40 @@ polygon_points = []
 
 # Define a mouse callback function to capture clicks
 def mouse_callback(event, x, y, flags, param):
+    global frame, frame_copy  # Use a global frame copy to manage temporary drawing
+
+    # If the left mouse button is clicked, register the point
     if event == cv2.EVENT_LBUTTONDOWN:
         polygon_points.append((x, y))
-        cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)  # Draw a small circle to mark the point
-        cv2.imshow("Frame", frame)
+        cv2.circle(frame, (x, y), 5, (0, 255, 0), 2)  # Draw a circle to mark the point on the permanent frame
+
+        # Draw a line between the last two points in the permanent frame
+        if len(polygon_points) >= 2:
+            cv2.line(frame, polygon_points[-1], polygon_points[-2], (0, 255, 0), 2)
+
+        # If we have four points, close the polygon by connecting the last to the first point
+        if len(polygon_points) == 4:
+            cv2.line(frame, polygon_points[0], polygon_points[-1], (0, 255, 0), 2)
+
+    # Refresh `frame_copy` from `frame` to add the temporary line
+    frame_copy = frame.copy()
+
+    # Draw the dynamic line from the last clicked point to the current mouse position
+    if len(polygon_points) > 0:
+        cv2.line(frame_copy, polygon_points[-1], (x, y), (0, 255, 0), 5)
+        cv2.line(frame_copy, polygon_points[0], (x, y), (0, 255, 0), 5)
+    # Show the frame with both permanent and dynamic drawings
+    cv2.imshow("Frame", frame_copy)
+        
 
 # Get the first frame from the video
 frame_generator = sv.get_video_frames_generator(source_path=SOURCE_VIDEO_PATH)
 frame_iterator = iter(frame_generator)
 frame = next(frame_iterator).copy()  # Capture a copy of the first frame
-
+frame_copy = frame.copy()
 # Show the frame and set up mouse click capturing
 cv2.namedWindow("Frame", cv2.WINDOW_NORMAL)
-cv2.imshow("Frame", frame)
+cv2.imshow("Frame", frame_copy)
 cv2.setMouseCallback("Frame", mouse_callback)
 
 print("Click on four points in the frame to define the polygon. Press 'q' when done.")
@@ -47,6 +68,17 @@ cv2.destroyAllWindows()
 # Convert collected points to numpy array
 SOURCE = np.array(polygon_points)
 
+# sorting the polygon points as required
+# B <- A
+# v    ^
+# C -> D
+
+np.sort(SOURCE,axis=0)
+temp = SOURCE[0].copy()
+SOURCE[0] = SOURCE[2]
+SOURCE[2] = temp
+
+
 # Prompt the user for target width and height
 TARGET_WIDTH = int(input("Enter the target width: "))
 TARGET_HEIGHT = int(input("Enter the target height: "))
@@ -59,13 +91,9 @@ TARGET = np.array([
     [0, TARGET_HEIGHT - 1],
 ])
 print('Displaying the image')
+
 # Annotate and display the polygon on the first frame
 annotated_frame = frame.copy()
 annotated_frame = sv.draw_polygon(scene=annotated_frame, polygon=SOURCE, color=sv.Color(255, 0, 0), thickness=4)
 sv.plot_image(annotated_frame)
-# Display annotated frame (optional)
-# cv2.imshow("Annotated Frame", annotated_frame)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
 
-# Proceed with the rest of your processing here

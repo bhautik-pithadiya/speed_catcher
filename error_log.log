@@ -1,0 +1,11 @@
+2024-11-13 18:00:17,324 - root - ERROR - Error Occurred in get_splitted_polygon_points function: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+Traceback (most recent call last):
+  File "/home/hlink/workspace/road_segementation/src/utils.py", line 20, in get_splitted_polygon_points
+    if not points:
+ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+2024-11-13 18:00:17,324 - root - ERROR - Error in main: cannot access local variable 'frame' where it is not associated with a value
+2024-11-13 18:02:21,268 - root - ERROR - Error Occurred in get_splitted_polygon_points function: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+Traceback (most recent call last):
+  File "/home/hlink/workspace/road_segementation/src/utils.py", line 20, in get_splitted_polygon_points
+    if not points:
+ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
