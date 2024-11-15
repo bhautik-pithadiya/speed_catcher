@@ -74,7 +74,7 @@ def fetch_all_data():
     conn.close()
 
 
-os.environ["SOURCE_VIDEO_PATH"]  = "/media/hlink/hd/vehical_test_videos/new_test_video/test_file_1_clipped.mp4"
+os.environ["SOURCE_VIDEO_PATH"]  = "/media/hlink/hd/vehical_test_videos/new_test_video/test_file_1_clipped_30.mp4"
 SOURCE_VIDEO_PATH = os.getenv("SOURCE_VIDEO_PATH")
 if not os.path.exists(SOURCE_VIDEO_PATH):
     raise Exception(f"File not found at {SOURCE_VIDEO_PATH}")
@@ -334,8 +334,8 @@ with sv.VideoSink(TARGET_VIDEO_PATH, video_info) as sink:
                         # Extract the vehicle's region from the current frame
                         vehicle_image = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
                         # Save the image for OCR processing
-                        image_paths = f'overspeeding_vehicles_ss/overspeeding_vehicle_{tracker_id}.png'
-                        cv2.imwrite(f"overspeeding_vehicles_ss/overspeeding_vehicle_{tracker_id}.png", vehicle_image)
+                        image_paths = f'data/overspeeding_vehicles_ss/overspeeding_vehicle_{tracker_id}.png'
+                        cv2.imwrite(f"data/overspeeding_vehicles_ss/overspeeding_vehicle_{tracker_id}.png", vehicle_image)
 
                         overspeeding_vehicles[tracker_id].append(((x_min, y_min, x_max, y_max), avg_speed,image_paths))
 
@@ -355,7 +355,7 @@ with sv.VideoSink(TARGET_VIDEO_PATH, video_info) as sink:
 
 
             # Optionally, run your OCR system here on the saved image
-            plate_number = detecting_number_plate_ocr(f"overspeeding_vehicles_ss/overspeeding_vehicle_{tracker_id}.png")
+            plate_number = detecting_number_plate_ocr(f"data/overspeeding_vehicles_ss/overspeeding_vehicle_{tracker_id}.png")
             print(f"OCR result for vehicle {tracker_id}: {plate_number}")
             print(f"Updating vehicle {tracker_id} with speed {speed}")
             insert_number_plate(tracker_id, plate_number, speed, image_path)

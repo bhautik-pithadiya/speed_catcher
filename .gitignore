@@ -1,4 +1,5 @@
 .venv
 .vscode
-video_results/
+data
+logs
 yolov8x.pt

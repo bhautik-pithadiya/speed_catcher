@@ -12,7 +12,7 @@ logger.setLevel(logging.DEBUG)
 log_filename = f"logs/vehicle_tracking_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
 file_handler = logging.FileHandler(log_filename)  # Log file
-file_handler.setLevel(logging.WARNING)  # Only capture WARNING and above for file
+file_handler.setLevel(logging.INFO)  # Only capture WARNING and above for file
 
 
 stream_handler = logging.StreamHandler()  # Terminal (console)

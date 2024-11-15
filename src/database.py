@@ -28,6 +28,7 @@ def create_database(db_path='vehicle_plates.db'):
 def insert_number_plate(db_path, vehicle_id, plate_number, speed, image_path):
     try:
         logger.info('Inserting values to the database that was created previously...')
+        vehicle_id = int(vehicle_id)
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
